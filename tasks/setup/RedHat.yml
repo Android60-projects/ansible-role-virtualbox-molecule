@@ -1,0 +1,109 @@
+---
+- name: Setup VirtualBox yum repository
+  tags:
+    - setup
+  yum_repository:
+    name: virtualbox
+    description: Oracle Linux / RHEL / CentOS-$releasever / $basearch - VirtualBox
+    baseurl: http://download.virtualbox.org/virtualbox/rpm/el/$releasever/$basearch
+    enabled: 1
+    gpgcheck: 1
+    repo_gpgcheck: 1
+    gpgkey: https://www.virtualbox.org/download/oracle_vbox_2016.asc
+  become: true
+
+- name: Setup Hashicorp yum repository
+  tags:
+    - setup
+  yum_repository:
+    name: hashicorp
+    description: Hashicorp RHEL repo
+    baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
+    enabled: 1
+    gpgcheck: 1
+    gpgkey: https://rpm.releases.hashicorp.com/gpg
+  become: true
+
+- name: Install required packages
+  tags:
+    - setup
+  package:
+    name:
+      - python39
+      - python3-pip
+      - acl
+      - git
+      - kernel-devel
+      - kernel-headers
+      - elfutils-libelf-devel
+      - gcc
+      - make
+      - perl
+    state: present
+  become: true
+
+- name: Upgrade kernel
+  tags:
+    - setup
+  package:
+    name:
+      - kernel-modules
+      - kernel-core
+    state: latest
+  become: true
+  notify: reboot system
+
+- name: Flush handlers to force system reboot
+  meta: flush_handlers
+
+- name: Install VirtualBox and Vagrant
+  tags:
+    - setup
+  package:
+    name:
+      - "VirtualBox-{{ virtualbox_version }}"
+      - "vagrant"
+    state: present
+  become: true
+
+- name: Add {{ jenkins_user }} to vboxusers group.
+  when: jenkins_user is defined
+  tags:
+    - setup
+  user:
+    name: "{{ jenkins_user }}"
+    state: present
+    shell: /bin/bash
+    append: true
+    groups: vboxusers
+
+- name: Check VirtualBox kernel module status
+  tags:
+    - setup
+  command: /usr/lib/virtualbox/vboxdrv.sh status
+  register: vboxdrv_status
+  changed_when: False
+
+- name: Rebuild VirtualBox kernel modules
+  tags:
+    - setup
+  command: /usr/lib/virtualbox/vboxdrv.sh setup
+  when:
+    - "'is loaded' not in vboxdrv_status.stdout"
+    - "'are loaded' not in vboxdrv_status.stdout"
+  become: true
+
+- name: Install molecule and vagrant modules
+  tags:
+    - setup
+  become: true
+  become_user: "{{ jenkins_user }}"
+  ansible.builtin.pip:
+    name:
+      - ansible
+      - python-vagrant
+      - "molecule=={{ molecule_version }}"
+      - molecule-plugins[vagrant]
+      - yamllint
+    extra_args: --user
+    executable: pip3.9

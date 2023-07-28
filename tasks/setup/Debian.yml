@@ -1,0 +1,128 @@
+---
+- name: Update apt cache (Debian)
+  when: ansible_os_family == 'Debian'
+  tags:
+    - molecule-idempotence-notest
+    - setup
+  apt:
+    update_cache: true
+
+- name: Install required packages
+  tags:
+    - setup
+  package:
+    name:
+      - python3-pip
+      - acl
+      - git
+      - linux-headers-{{ ansible_kernel }}
+    state: present
+  become: true
+
+- name: Add Virtualbox apt signing key
+  tags:
+    - setup
+  apt_key:
+    url: "{{ item }}"
+    state: present
+  with_items:
+    - https://download.virtualbox.org/virtualbox/debian/oracle_vbox.asc
+    - https://download.virtualbox.org/virtualbox/debian/oracle_vbox_2016.asc
+  become: true
+
+- name: Add Hashicorp apt signing key
+  tags:
+    - setup
+  apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+    state: present
+  become: true
+
+- name: Setup VirtualBox apt repository on Ubuntu
+  tags:
+    - setup
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian {{ ansible_facts['distribution_release'] }} contrib"
+    state: present
+  become: true
+
+- name: Setup Hashicorp apt repository on Ubuntu
+  tags:
+    - setup
+  apt_repository:
+    repo: "deb https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
+    state: present
+  become: true
+
+- name: Install VirtualBox and Vagrant
+  tags:
+    - setup
+  package:
+    name:
+      - "virtualbox-{{ virtualbox_version }}"
+      - "vagrant"
+    state: present
+  become: true
+
+- name: Set my_user to jenkins_user (if defined).
+  when: jenkins_user is defined
+  set_fact:
+    my_user: "{{ jenkins_user }}"
+
+- name: Set my_user to ansible_user (not defined).
+  when: jenkins_user is not defined
+  set_fact:
+    my_user: "{{ ansible_env.USER }}"
+
+- name: "Add {{ my_user }} to vboxusers group."
+  tags:
+    - setup
+  user:
+    name: "{{ my_user }}"
+    state: present
+    shell: /bin/bash
+    append: true
+    groups: vboxusers
+
+- name: Check VirtualBox kernel module status
+  tags:
+    - setup
+  command: /usr/lib/virtualbox/vboxdrv.sh status
+  register: vboxdrv_status
+  changed_when: False
+
+- name: Rebuild VirtualBox kernel modules
+  tags:
+    - setup
+  command: /usr/lib/virtualbox/vboxdrv.sh setup
+  when:
+    - "'is loaded' not in vboxdrv_status.stdout"
+    - "'are loaded' not in vboxdrv_status.stdout"
+  become: true
+
+- name: Ensure Pip packages are installed.
+  become: true
+  become_user: "{{ my_user }}"
+  tags:
+    - setup
+  pip:
+    name: "{{ item.name | default(item) }}"
+    version: "{{ item.version | default(omit) }}"
+    virtualenv: "{{ item.virtualenv | default(omit) }}"
+    state: "{{ item.state | default(omit) }}"
+    extra_args: "{{ item.extra_args | default(omit) }}"
+  loop: "{{ vbox_pip_install_packages }}"
+
+# - name: Install molecule and vagrant modules
+#   tags:
+#     - setup
+#   become: true
+#   become_user: "{{ my_user }}"
+#   ansible.builtin.pip:
+#     name:
+#       - ansible
+#       - python-vagrant
+#       - "molecule=={{ molecule_version }}"
+#       - molecule-plugins[vagrant]
+#       - yamllint
+#     extra_args: --user

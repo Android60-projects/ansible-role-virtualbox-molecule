@@ -1,0 +1,21 @@
+---
+virtualbox_version: "7.0"
+firewalld_default_interface_zone: "public"
+molecule_version: "5.0.1"
+vbox_pip_install_packages:
+  - name: ansible
+    state: present
+    extra_args: --user
+  - name: molecule
+    state: present
+    # version: "5.0.1" # default: N/A
+    extra_args: --user
+  - name: molecule-plugins[vagrant]
+    state: present
+    extra_args: --user
+  - name: python-vagrant
+    state: present
+    extra_args: --user
+  - name: yamllint
+    state: present
+    extra_args: --user
