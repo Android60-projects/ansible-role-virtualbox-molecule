@@ -66,12 +66,22 @@
     state: present
   become: true
 
-- name: Add {{ jenkins_user }} to vboxusers group.
+- name: Set my_user to jenkins_user (if defined).
+  when: jenkins_user is defined
+  set_fact:
+    my_user: "{{ jenkins_user }}"
+
+- name: Set my_user to ansible_user (not defined).
+  when: jenkins_user is not defined
+  set_fact:
+    my_user: "{{ ansible_env.USER }}"
+
+- name: Add {{ my_user }} to vboxusers group.
   when: jenkins_user is defined
   tags:
     - setup
   user:
-    name: "{{ jenkins_user }}"
+    name: "{{ my_user }}"
     state: present
     shell: /bin/bash
     append: true
@@ -97,7 +107,7 @@
   tags:
     - setup
   become: true
-  become_user: "{{ jenkins_user }}"
+  become_user: "{{ my_user }}"
   ansible.builtin.pip:
     name:
       - ansible
