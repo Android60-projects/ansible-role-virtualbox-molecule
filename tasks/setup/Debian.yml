@@ -64,13 +64,13 @@
     state: present
   become: true
 
-- name: Set my_user to jenkins_user (if defined).
-  when: jenkins_user is defined
+- name: Set my_user to vbox_user (if defined).
+  when: vbox_user is defined
   set_fact:
-    my_user: "{{ jenkins_user }}"
+    my_user: "{{ vbox_user }}"
 
 - name: Set my_user to ansible_user (not defined).
-  when: jenkins_user is not defined
+  when: vbox_user is not defined
   set_fact:
     my_user: "{{ ansible_env.USER }}"
 
