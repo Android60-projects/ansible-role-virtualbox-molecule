@@ -23,7 +23,7 @@ jobs:
       - name: Add ~/.local/bin to GITHUB_PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Install requirements
-        run: ansible-galaxy install -r requirements.yaml
+        run: ansible-galaxy install -r requirements.yaml --force
       - name: Run molecule test
         run: MOLECULE_DISTRO=geerlingguy/ubuntu2004 molecule test --parallel
   Test-Rocky-Linux-8:
@@ -34,6 +34,6 @@ jobs:
       - name: Add ~/.local/bin to GITHUB_PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Install requirements
-        run: ansible-galaxy install -r requirements.yaml
+        run: ansible-galaxy install -r requirements.yaml --force
       - name: Run molecule test
         run: MOLECULE_DISTRO=geerlingguy/rockylinux8 molecule test --parallel
